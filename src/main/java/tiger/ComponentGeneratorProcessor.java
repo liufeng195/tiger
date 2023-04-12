@@ -15,10 +15,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 package tiger;
 
-import com.google.android.apps.docs.tools.dagger.componentfactory.MembersInjector;
 import com.google.auto.service.AutoService;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
@@ -67,47 +65,43 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
   private Gson gson = new Gson();
 
   private ProcessingEnvironment env;
-  private Elements elements;
+  private Elements elementUtils;
   private Messager messager;
 
   // Following could be used cross processing rounds.
-  private SetMultimap<CoreInjectorInfo, TypeElement> modules = LinkedHashMultimap.create();
-  private SetMultimap<CoreInjectorInfo, TypeElement> injections = LinkedHashMultimap.create();
-  private SetMultimap<CoreInjectorInfo, TypeElement> ctorInjectedClasses = LinkedHashMultimap.create();
+  private SetMultimap<ComponentInfo, TypeElement> modules = LinkedHashMultimap.create();
+  private SetMultimap<ComponentInfo, TypeElement> injections = LinkedHashMultimap.create();
+  private SetMultimap<ComponentInfo, TypeElement> ctorInjectedClasses = LinkedHashMultimap.create();
   private Set<TypeElement> unscopedModules = new HashSet<>();
-  private Map<CoreInjectorInfo, CoreInjectorInfo> componentTree;
-  private ScopeSizer scopeSizer;
-  private Map<TypeElement, CoreInjectorInfo> scopeToComponent;
+  private Map<ComponentInfo, ComponentInfo> componentTree;
+  private NewScopeSizer scopeSizer;
+  private Map<TypeElement, ComponentInfo> scopeToComponent;
   private String packageForGenerated;
   
   private boolean done;
   
   // Could be recovered in next round.
   private List<String> allRecoverableErrors = new ArrayList<>();
-  // TODO: fill this.
-  private ScopeAliasCondenser scopeAliasCondenser = null;
-  private Utils utils;
 
   @Override
   public synchronized void init(ProcessingEnvironment env) {
     super.init(env);
     
     this.env = env;
-    elements = env.getElementUtils();
+    elementUtils = env.getElementUtils();
     messager = env.getMessager();
   }
 
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
-    utils = new Utils(processingEnv, env);
     if (done) {
       return false;
     }
 
-    messager.printMessage(Kind.NOTE, "pure tiger");
+    System.out.println("pure tiger");
 
     PackageElement packageElement =
-        elements.getPackageElement(SharedNames.DEPENDENCY_INFORMATION_PACKAGE_NAME);
+        elementUtils.getPackageElement(SharedNames.DEPENDENCY_INFORMATION_PACKAGE_NAME);
     if (packageElement == null) {
       return false;
     }
@@ -121,7 +115,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
             Preconditions.checkState(
                 ((DeclaredType) e.asType())
                     .asElement()
-                    .equals(elements.getTypeElement(String.class.getCanonicalName())),
+                    .equals(elementUtils.getTypeElement(String.class.getCanonicalName())),
                 String.format("There should be only fields of type String. But got field: %s", e));
 
             TypeElement typeElement;
@@ -138,7 +132,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
               }
               Set<TypeElement> scopeDependencies = new HashSet<>();
               for (String elementName : collected) {
-                typeElement = elements.getTypeElement(elementName);
+                typeElement = elementUtils.getTypeElement(elementName);
                 scopeDependencies.add(typeElement);
               }
               if (scopeTree != null) {
@@ -158,7 +152,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
               }
               Set<TypeElement> scopeComponentNameElements = new HashSet<>();
               for (String elementName : collected) {
-                typeElement = elements.getTypeElement(elementName);
+                typeElement = elementUtils.getTypeElement(elementName);
                 scopeComponentNameElements.add(typeElement);
               }
               scopedComponentNames = getScopedComponentNames(scopeComponentNameElements);
@@ -183,7 +177,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
     if (componentTree.isEmpty()) {
       // TODO(freeman): support only scope.
     }
-    scopeSizer = new TreeScopeSizer(componentTree, null, messager);
+    scopeSizer = new TreeScopeSizer(componentTree, null);
 //    messager.printMessage(Kind.NOTE, String.format("%s componentTree: %s", TAG, componentTree));
 //    messager.printMessage(Kind.NOTE, String.format("%s scopeSizer: %s", TAG, scopeSizer));
     scopeToComponent = getScopeToComponentMap();
@@ -191,6 +185,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
     if (componentTree == null) {
       return false;
     }
+
     
     for (Element element : packageElement.getEnclosedElements()) {
       for (Element e : element.getEnclosedElements()) {
@@ -198,7 +193,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
           Preconditions.checkState(
               ((DeclaredType) e.asType())
                   .asElement()
-                  .equals(elements.getTypeElement(String.class.getCanonicalName())),
+                  .equals(elementUtils.getTypeElement(String.class.getCanonicalName())),
               String.format("There should be only fields of type String. But got field: %s", e));
 
           TypeElement typeElement;
@@ -211,10 +206,10 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
           if (fieldName.equals(SharedNames.DEPENDENCY_INFORMATION_FIELD_NAME_MODULES)) {
             collected = gson.fromJson(jsonString, stringListType);
             for (String elementName : collected) {
-              typeElement = elements.getTypeElement(elementName);
+              typeElement = elementUtils.getTypeElement(elementName);
               elementType = (DeclaredType) typeElement.asType();
-              if (utils.hasProvisionMethod(elementType)) {
-                TypeElement scope = utils.getModuleScope(elementType, scopeAliasCondenser);
+              if (Utils.hasProvisionMethod(elementType)) {
+                TypeElement scope = Utils.getModuleScope(elementType);
                 if (scope == null) {
                   unscopedModules.add(typeElement);
                 } else {
@@ -226,7 +221,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
               SharedNames.DEPENDENCY_INFORMATION_FIELD_NAME_MEMBERS_INJECTORS)) {
             collected = gson.fromJson(jsonString, stringListType);
             for (String elementName : collected) {
-              typeElement = elements.getTypeElement(elementName);
+              typeElement = elementUtils.getTypeElement(elementName);
               elementType = (DeclaredType) typeElement.asType();
               DeclaredType scopeClass = getMembersInjectorScope(elementType);
               TypeElement scope = (TypeElement) scopeClass.asElement();
@@ -245,9 +240,9 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
               SharedNames.DEPENDENCY_INFORMATION_FIELD_NAME_CTOR_INJECTED_CLASSES)) {
             collected = gson.fromJson(jsonString, stringListType);
             for (String elementName : collected) {
-              typeElement = elements.getTypeElement(elementName);
+              typeElement = elementUtils.getTypeElement(elementName);
               // typeElement must have scope. See {@link DependencyInformationCollectorProcessor}.
-              TypeElement scope = (TypeElement) utils.getScopeType(typeElement, scopeAliasCondenser).asElement();
+              TypeElement scope = (TypeElement) Utils.getScopeType(typeElement).asElement();
               ctorInjectedClasses.put(scopeToComponent.get(scope), typeElement);
             }
           } else {
@@ -271,55 +266,46 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
 
     Set<TypeElement> allModules = Sets.newHashSet(modules.values());
     allModules.addAll(unscopedModules);
-    DependencyCollector dependencyCollector = DependencyCollector.getInstance(processingEnv, utils);
+    NewDependencyCollector dependencyCollector = new NewDependencyCollector(processingEnv);
     Collection<TypeElement> membersInjectors = injections.values();
-    Collection<DependencyInfo> dependencyInfos =
-        dependencyCollector.collect(allModules, membersInjectors, new HashMap<>(), HashMultimap.create(),
-            HashMultimap.create(), allRecoverableErrors
-        );
+    Collection<NewDependencyInfo> dependencyInfos =
+        dependencyCollector.collect(allModules, membersInjectors, allRecoverableErrors);
 
-    Set<BindingKey> requiredKeys =
+    Set<NewBindingKey> requiredKeys =
         dependencyCollector.getRequiredKeys(membersInjectors, dependencyInfos);
     //messager.printMessage(Kind.NOTE, String.format("all keys required: %s", requiredKeys));
 
-    ScopeCalculator scopeCalculator =
-        new ScopeCalculator(scopeSizer, dependencyInfos, requiredKeys,
-            new HashMap<>(),new HashMap<>(),
-            scopeAliasCondenser, processingEnv, utils);
-    Preconditions.checkState(scopeCalculator.initialize().isEmpty());
-    CoreInjectorGenerator coreInjectorGenerator =
-        new CoreInjectorGenerator(
-            DependencyCollector.collectionToMultimap(dependencyInfos),
-            scopeCalculator,
-            scopeAliasCondenser,
+    NewScopeCalculator newScopeCalculator =
+        new NewScopeCalculator(scopeSizer, dependencyInfos, requiredKeys, processingEnv);
+    Preconditions.checkState(newScopeCalculator.initialize().isEmpty());
+    NewInjectorGenerator newInjectorGenerator =
+        new NewInjectorGenerator(
+            NewDependencyCollector.collectionToMultimap(dependencyInfos),
+            newScopeCalculator,
             modules,
             unscopedModules,
             injections,
-            HashMultimap.create(),
             componentTree,
             null, // TODO(freeman): fill it if componentTree is empty.
-            HashMultimap.create(),
-            HashMultimap.create(),
             packageForGenerated,
             "Dagger",
             "Component",
-            processingEnv,
-            utils);
-    coreInjectorGenerator.generate();
+            processingEnv);
+    newInjectorGenerator.generate();
 
     done = true;
     
     return false;
   }
 
-  private Map<TypeElement, CoreInjectorInfo> getScopeToComponentMap() {
-    Map<TypeElement, CoreInjectorInfo> result = new HashMap<>();
+  private Map<TypeElement, ComponentInfo> getScopeToComponentMap() {
+    Map<TypeElement, ComponentInfo> result = new HashMap<>();
 
-    Set<CoreInjectorInfo> allCoreInjectorInfos = new HashSet<>();
-    allCoreInjectorInfos.addAll(componentTree.values());
-    allCoreInjectorInfos.addAll(componentTree.keySet());
-    for (CoreInjectorInfo coreInjectorInfo : allCoreInjectorInfos) {
-      result.put(coreInjectorInfo.getScope(), coreInjectorInfo);
+    Set<ComponentInfo> allComponentInfos = new HashSet<>();
+    allComponentInfos.addAll(componentTree.values());
+    allComponentInfos.addAll(componentTree.keySet());
+    for (ComponentInfo componentInfo : allComponentInfos) {
+      result.put(componentInfo.getScope(), componentInfo);
     }
     return result;
   }
@@ -327,15 +313,15 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
   /**
    * Creates map from child to parent.
    */
-  private Map<CoreInjectorInfo, CoreInjectorInfo> getComponentTree(
+  private Map<ComponentInfo, ComponentInfo> getComponentTree(
       Map<TypeElement, TypeElement> scopeTree, Map<TypeElement, String> scopesComponentNames) {
-    Map<CoreInjectorInfo, CoreInjectorInfo> result = new HashMap<>();
+    Map<ComponentInfo, ComponentInfo> result = new HashMap<>();
     for (Map.Entry<TypeElement, TypeElement> entry : scopeTree.entrySet()) {
       TypeElement child = entry.getKey();
       TypeElement parent = entry.getValue();
       result.put(
-          new CoreInjectorInfo(child, scopesComponentNames.get(child)),
-          new CoreInjectorInfo(parent, scopesComponentNames.get(parent)));
+          new ComponentInfo(child, scopesComponentNames.get(child)),
+          new ComponentInfo(parent, scopesComponentNames.get(parent)));
     }
     return result;
   }
@@ -356,12 +342,12 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
     Map<TypeElement, String> result = new HashMap<>();
     for (TypeElement typeElement : scopeComponentNameElements) {
       AnnotationMirror annotationMirror =
-          utils.getAnnotationMirror(typeElement, ScopedComponentNames.class);
+          Utils.getAnnotationMirror(typeElement, ScopedComponentNames.class);
       TypeElement scope =
           (TypeElement)
-              ((DeclaredType) utils.getAnnotationValue(elements, annotationMirror, "scope").getValue())
+              ((DeclaredType) Utils.getAnnotationValue(annotationMirror, "scope").getValue())
                   .asElement();
-      String name = (String) utils.getAnnotationValue(elements, annotationMirror, "name").getValue();
+      String name = (String) Utils.getAnnotationValue(annotationMirror, "name").getValue();
       Preconditions.checkState(
           result.put(scope, name) == null,
           String.format(
@@ -381,15 +367,15 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
     for (TypeElement element : scopeDependencies) {
       AnnotationMirror annotationMirror =
           Preconditions.checkNotNull(
-              utils.getAnnotationMirror(element, ScopeDependency.class),
+              Utils.getAnnotationMirror(element, ScopeDependency.class),
               String.format("Did not find @ScopeDependency on %s", element));
       TypeElement scope =
           (TypeElement)
-              ((DeclaredType) utils.getAnnotationValue(elements, annotationMirror, "scope").getValue())
+              ((DeclaredType) Utils.getAnnotationValue(annotationMirror, "scope").getValue())
                   .asElement();
       TypeElement parent =
           (TypeElement)
-              ((DeclaredType) utils.getAnnotationValue(elements, annotationMirror, "parent").getValue())
+              ((DeclaredType) Utils.getAnnotationValue(annotationMirror, "parent").getValue())
                   .asElement();
       Preconditions.checkState(
           result.put(scope, parent) == null,
@@ -407,43 +393,36 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
     all.addAll(childToParentMap.values());
     for (TypeElement typeElement : all) {
       Preconditions.checkState(
-          utils.isScopeTypeElement(typeElement),
+          Utils.isScopeTypeElement(typeElement),
           String.format("Scope %s does not have @Scope annotation", typeElement));
     }
   }
 
   private void checkScopes(
-      Collection<DependencyInfo> deps,
-      Set<BindingKey> requiredKeys,
+      Collection<NewDependencyInfo> deps,
+      Set<NewBindingKey> requiredKeys,
       ProcessingEnvironment env) {
-    ScopeCalculator scopeCalculator =
-        new ScopeCalculator(
-            scopeSizer,
-            deps,
-            requiredKeys,
-            new HashMap<>(),
-            new HashMap<>(),
-            scopeAliasCondenser,
-            env, utils);
-    allRecoverableErrors.addAll(scopeCalculator.initialize());
+    NewScopeCalculator newScopeCalculator =
+        new NewScopeCalculator(scopeSizer, deps, requiredKeys, env);
+    allRecoverableErrors.addAll(newScopeCalculator.initialize());
     if (!allRecoverableErrors.isEmpty()) {
       return;
     }
-    checkScopedSetBindings(deps, scopeCalculator);
+    checkScopedSetBindings(deps, newScopeCalculator);
   }
 
   /**
    * Checks if there are duplicated bindings for the a key.
    */
-  private void checkDuplicateBindings(Collection<DependencyInfo> deps) {
-    SetMultimap<BindingKey, DependencyInfo> map =
-        DependencyCollector.collectionToMultimap(deps);
-    for (BindingKey key : map.keySet()) {
-      Set<DependencyInfo> dependencies = map.get(key);
+  private void checkDuplicateBindings(Collection<NewDependencyInfo> deps) {
+    SetMultimap<NewBindingKey, NewDependencyInfo> map =
+        NewDependencyCollector.collectionToMultimap(deps);
+    for (NewBindingKey key : map.keySet()) {
+      Set<NewDependencyInfo> dependencies = map.get(key);
       if (dependencies.size() == 1) {
         continue;
       }
-      for (DependencyInfo info : dependencies) {
+      for (NewDependencyInfo info : dependencies) {
         if (info.isUnique()) {
           messager.printMessage(
               Kind.ERROR,
@@ -460,17 +439,15 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
   private void check() {
     Set<TypeElement> allModules = Sets.newHashSet(modules.values());
     allModules.addAll(unscopedModules);
-    DependencyCollector dependencyCollector = DependencyCollector.getInstance(processingEnv, utils);
+    NewDependencyCollector dependencyCollector = new NewDependencyCollector(processingEnv);
     Collection<TypeElement> membersInjectors = injections.values();
-    Collection<DependencyInfo> dependencyInfos =
-        dependencyCollector.collect(allModules, membersInjectors, new HashMap<>(), HashMultimap.create(),
-            HashMultimap.create(), allRecoverableErrors
-        );
+    Collection<NewDependencyInfo> dependencyInfos =
+        dependencyCollector.collect(allModules, membersInjectors, allRecoverableErrors);
     if (!allRecoverableErrors.isEmpty()) {
       return;
     }
     checkDuplicateBindings(dependencyInfos);
-    Set<BindingKey> requiredKeys =
+    Set<NewBindingKey> requiredKeys =
         dependencyCollector.getRequiredKeys(membersInjectors, dependencyInfos);
     checkScopes(dependencyInfos, requiredKeys, env);
   }
@@ -479,9 +456,9 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
    * Scoped set bindings are dangerous.
    */
   private void checkScopedSetBindings(
-      Collection<DependencyInfo> dependencyInfos, ScopeCalculator scopeCalculator) {
-    Set<BindingKey> explicitScopedKeys = scopeCalculator.getExplicitScopedKeys();
-    for (DependencyInfo info : dependencyInfos) {
+      Collection<NewDependencyInfo> dependencyInfos, NewScopeCalculator scopeCalculator) {
+    Set<NewBindingKey> explicitScopedKeys = scopeCalculator.getExplicitScopedKeys();
+    for (NewDependencyInfo info : dependencyInfos) {
       if (info.isSet() && explicitScopedKeys.contains(info.getDependant())) {
         allRecoverableErrors.add(
             String.format("Set binding should not be scoped. Binding: %s", info));
@@ -496,7 +473,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
   private DeclaredType getMembersInjectorScope(DeclaredType membersInjectorType) {
     ExecutableElement scopeElement = null;
     TypeElement membersInjectorTypeElement =
-        elements.getTypeElement(MembersInjector.class.getCanonicalName());
+        elementUtils.getTypeElement(MembersInjector.class.getCanonicalName());
     for (Element element : membersInjectorTypeElement.getEnclosedElements()) {
       if (element.getSimpleName().contentEquals("scope")) {
         scopeElement = (ExecutableElement) element;
@@ -510,7 +487,7 @@ public class ComponentGeneratorProcessor extends AbstractProcessor {
       if (annotationMirror
           .getAnnotationType()
           .asElement()
-          .equals(elements.getTypeElement(MembersInjector.class.getCanonicalName()))) {
+          .equals(elementUtils.getTypeElement(MembersInjector.class.getCanonicalName()))) {
         return (DeclaredType) annotationMirror.getElementValues().get(scopeElement).getValue();
       }
     }

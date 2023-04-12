@@ -22,51 +22,46 @@ import com.google.common.collect.Sets;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
-import javax.annotation.processing.Messager;
 import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic.Kind;
 
 /**
- * {@link ScopeSizer} based on the given scope tree. Size is 0 based.
+ * {@link NewScopeSizer} based on the given scope tree. Size is 0 based.
  */
-public class TreeScopeSizer implements ScopeSizer {
+public class TreeScopeSizer implements NewScopeSizer {
   
   // Map from child to parent.
-  private final Map<CoreInjectorInfo, CoreInjectorInfo> scopeTree;
-  private final Map<CoreInjectorInfo, Integer> scopeToDepthMap = new HashMap<>();
+  private final Map<ComponentInfo, ComponentInfo> scopeTree;
+  private final Map<ComponentInfo, Integer> scopeToDepthMap = new HashMap<>();
   private final int largestSize;
   private final int smallestSize = 0;
-  private final CoreInjectorInfo largestScope;
-  private final Messager messager;
-
-  public TreeScopeSizer(Map<CoreInjectorInfo, CoreInjectorInfo> scopeTree,
-      @Nullable CoreInjectorInfo rootCoreInjectorInfo,
-      Messager messager) {
+  private final ComponentInfo largestScope;
+  
+  public TreeScopeSizer(Map<ComponentInfo, ComponentInfo> scopeTree,
+      @Nullable ComponentInfo rootComponentInfo) {
     this.scopeTree = scopeTree;
-    this.messager = messager;
     if (!scopeTree.isEmpty()) {
-      rootCoreInjectorInfo = Iterables
+      rootComponentInfo = Iterables
           .getOnlyElement(Sets.difference(Sets.newHashSet(scopeTree.values()), scopeTree.keySet()));
     } else {
-      Preconditions.checkNotNull(rootCoreInjectorInfo);
+      Preconditions.checkNotNull(rootComponentInfo);
     }
-    scopeToDepthMap.put(rootCoreInjectorInfo, 0);
-    largestScope = rootCoreInjectorInfo;
-    for (CoreInjectorInfo coreInjectorInfo : scopeTree.keySet()) {
-      int depth = findTreeNodeDepth(scopeTree, coreInjectorInfo);
-      scopeToDepthMap.put(coreInjectorInfo, depth);
+    scopeToDepthMap.put(rootComponentInfo, 0);
+    largestScope = rootComponentInfo;
+    for (ComponentInfo componentInfo : scopeTree.keySet()) {
+      int depth = findTreeNodeDepth(scopeTree, componentInfo);
+      scopeToDepthMap.put(componentInfo, depth);
     }
 
     int depth = 0;
-    for (Map.Entry<CoreInjectorInfo, Integer> entry : scopeToDepthMap.entrySet()) {
+    for (Map.Entry<ComponentInfo, Integer> entry : scopeToDepthMap.entrySet()) {
       int value = entry.getValue();
       if (value > depth) {
         depth = value;
       }
     }
     largestSize = depth;
-    messager.printMessage(Kind.NOTE, "scopeTree: %s" + scopeTree);
-    messager.printMessage(Kind.NOTE, "scopeToDepthMap: " + scopeToDepthMap);
+    System.out.println(String.format("scopeTree: %s", scopeTree));
+    System.out.println(String.format("scopeToDepthMap: %s", scopeToDepthMap));
   }
 
   /**
@@ -83,38 +78,25 @@ public class TreeScopeSizer implements ScopeSizer {
     return result;
   }
 
-  /**
-   * Return the size of the scope, -1 if it is not in the tree.
-   */
   @Override
-  public int getScopeSize(CoreInjectorInfo scope) {
-    if (!scopeToDepthMap.containsKey(scope)) {
-      return -1;
-    }
+  public int getScopeSize(ComponentInfo scope) {
     return largestSize - scopeToDepthMap.get(scope);
   }
 
-  /**
-   * Return the size of the scope, -1 if it is not in the tree.
-   */
   @Override
   public int getScopeSize(TypeElement scope) {
-    for (CoreInjectorInfo coreInjectorInfo : scopeToDepthMap.keySet()) {
-      if (coreInjectorInfo.getScope().getQualifiedName().contentEquals(scope.getQualifiedName())) {
-        int result = getScopeSize(coreInjectorInfo);
-        Preconditions.checkState(result != -1);
-        return result;
+    for (ComponentInfo componentInfo : scopeToDepthMap.keySet()) {
+      if (componentInfo.getScope().getQualifiedName().contentEquals(scope.getQualifiedName())) {
+        return getScopeSize(componentInfo);
       }
     }
-    messager.printMessage(Kind.NOTE,
-        String.format("Did not find component for scope: %s, tree: %s, map: %s\n", scope, scopeTree,
+    throw new RuntimeException(
+        String.format("Did not find component for scope: %s, tree: %s, map: %s", scope, scopeTree,
             scopeToDepthMap));
-    throw new RuntimeException();
-    // return -1;
   }
 
   @Override
-  public CoreInjectorInfo getLargestScope() {
+  public ComponentInfo getLargestScope() {
     return largestScope;
   }
 
@@ -124,25 +106,22 @@ public class TreeScopeSizer implements ScopeSizer {
   }
 
   @Override
-  public boolean isSmallestScope(CoreInjectorInfo scope) {
+  public boolean isSmallestScope(ComponentInfo scope) {
     return getScopeSize(scope) == smallestSize;
   }
 
   @Override
-  public CoreInjectorInfo getLargestDependantScope(
-      CoreInjectorInfo scope1, CoreInjectorInfo scope2) {
-    Preconditions.checkArgument(getScopeSize(scope1) != -1 && getScopeSize(scope2) != -1);
+  public ComponentInfo getLargestDependantScope(ComponentInfo scope1, ComponentInfo scope2) {
     return getScopeSize(scope1) > getScopeSize(scope2) ? scope2 : scope1;
   }
 
   @Override
   public TypeElement getLargestDependantScope(TypeElement scope1, TypeElement scope2) {
-    Preconditions.checkArgument(getScopeSize(scope1) != -1 && getScopeSize(scope2) != -1);
     return getScopeSize(scope1) > getScopeSize(scope2) ? scope2 : scope1;
   }
 
   @Override
-  public boolean canDependOn(CoreInjectorInfo dependent, CoreInjectorInfo dependency) {
+  public boolean canDependOn(ComponentInfo dependent, ComponentInfo dependency) {
     while (dependent != null) {
       if (dependent.equals(dependency)) {
         return true;
@@ -155,17 +134,17 @@ public class TreeScopeSizer implements ScopeSizer {
   
   @Override
   public boolean canDependOn(TypeElement dependent, TypeElement dependency) {
-    return canDependOn(findCorInjectorForScopeOrThrow(dependent),
-        findCorInjectorForScopeOrThrow(dependency));
+    return canDependOn(findComponentInfoForScopeOrThrow(dependent),
+        findComponentInfoForScopeOrThrow(dependency));
   }
   
-  private CoreInjectorInfo findCorInjectorForScopeOrThrow(TypeElement scopeType) {
-    for (CoreInjectorInfo ci: scopeToDepthMap.keySet()) {
+  private ComponentInfo findComponentInfoForScopeOrThrow(TypeElement scopeType) {
+    for (ComponentInfo ci: scopeToDepthMap.keySet()) {
       if (Utils.isTypeElementEqual(ci.getScope(), scopeType)) {
         return ci;
       }
     }
-    throw new RuntimeException(String.format("No CoreInjectorInfo for scope %s found. Size map: %s",
+    throw new RuntimeException(String.format("No ComponentInfo for scope %s found. Size map: %s",
         scopeType, scopeToDepthMap));
   }
   

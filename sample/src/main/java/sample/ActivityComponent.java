@@ -15,29 +15,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 package sample;
 
-import com.google.android.apps.docs.tools.dagger.componentfactory.MembersInjector;
+import tiger.MembersInjector;
 import dagger.Component;
-import dagger.Component.Builder;
-import java.util.Map;
 
 @ActivityScoped
-@ActivityScoped2
-@Component(
-  dependencies = {ApplicationComponent.class, AlienSource.class},
-  modules = {
-      ActivityModule.class,
-      AbstractActivityModule.class
-  }
-)
+//@Component(dependencies = ApplicationComponent.class, modules = ActivityModule.class)
 @MembersInjector(scope = sample.ActivityScoped.class)
 public interface ActivityComponent {
   void injectPseudoActivity(PseudoActivity activity);
-
-  @Component.Builder
-  interface Builder {
-    Builder s1(ApplicationComponent v);
-    Builder setAlienSource(AlienSource v);
-
-    ActivityComponent b();
-  }
 }

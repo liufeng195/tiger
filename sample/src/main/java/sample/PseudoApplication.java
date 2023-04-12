@@ -15,40 +15,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 package sample;
 
-import java.util.Map;
-import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Named;
 
 public class PseudoApplication {
   @Inject
+  Foo foo;
+
+  @Inject
+  @Named("xxx")
+  Foo namedFoo;
+
+  @Inject
   Baz baz;
-
-  @Inject
-  Tank tank;
-
-  @Inject
-  @Named("Russia")
-  Set<Tank> russiaTanks;
-
-  @Inject
-  Set<String> strings;
-
-  @Inject
-  Map<String, Planet> planets;
 
   @Override
   public String toString() {
-    return "PseudoApplication[baz: "
-        + baz
-        + " tank: "
-        + tank
-        + " Russia tansk: "
-        + russiaTanks
-        + " strings: "
-        + strings
-        + " planets: "
-        + planets
-        + "]";
+    return String.format("PseudoApplication[foo: %s , named foo: %s, baz: %s", foo, namedFoo, baz);
   }
 }

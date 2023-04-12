@@ -15,60 +15,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 package sample;
 
-import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
-import dagger.multibindings.ElementsIntoSet;
-import dagger.multibindings.IntoMap;
 import dagger.multibindings.IntoSet;
 
-import java.util.HashSet;
-import java.util.Set;
+import javax.inject.Named;
 import javax.inject.Singleton;
-import sample.ActivityComponent.Builder;
-import sample.ApplicationComponent.AppSub1Component;
-import sample.ApplicationComponent.AppSub1Component.B;
 
-@Module(subcomponents = AppSub1Component.class)
+@Module
 public class ApplicationModule {
 
-  private final Main app;
-
-  public ApplicationModule(Main app) {
-    this.app = app;
+  @Provides
+  @Singleton
+  Foo provideFoo() {
+    return new Foo();
   }
 
   @Provides
-  Foo3 provideFoo3(AppSub1Component.B b) {
-    return new Foo3(b);
-  }
-
-  @Provides
-  static FooByStatic provideFooByStatic(B b) {
-    return new FooByStatic(b);
+  @Singleton
+  @Named("xxx")
+  Foo provideNamedFoo() {
+    return new Foo();
   }
 
   @Provides
   @IntoSet
   Kablam provideKablamSet() {
     return new Kablam();
-  }
-
-  @Provides
-  @ElementsIntoSet
-  Set<String> provideStrings() { return new HashSet<>();}
-
-  @Provides
-  @IntoMap
-  @PlanetKey("mars")
-  Planet provideMars() {
-    return new Mars();
-  }
-
-  @Provides
-  @IntoMap
-  @PlanetKey("mercury")
-  Planet provideMercury() {
-    return new Mercury();
   }
 }
