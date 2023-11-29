@@ -16,7 +16,10 @@
 apply plugin: "java"
 
 repositories {
-  mavenCentral()
+//  mavenCentral()
+  maven {
+    url 'https://cmc.centralrepo.rnd.huawei.com/maven/'
+  }
 }
 
 dependencies {
