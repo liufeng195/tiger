@@ -21,8 +21,11 @@
       <groupId>com.freemanliu</groupId>
       <artifactId>tiger</artifactId>
       <version>0.0.1</version>
-      <scope>system</scope>
-      <systemPath>${basedir}/libs/tiger-full.jar</systemPath>
+<!--      local repo is preferred to system scope-->
+<!--      mvn install:install-file -Dfile=target/tiger-1.0-SNAPSHOT-shaded.jar -DgroupId=com.freemanliu -DartifactId=tiger -Dversion=0.0.1 -Dpackaging=jar-->
+
+      <!--      <scope>system</scope>-->
+<!--      <systemPath>${basedir}/libs/tiger-full.jar</systemPath>-->
     </dependency>
 
   </dependencies>
