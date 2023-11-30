@@ -23,25 +23,8 @@ repositories {
 }
 
 dependencies {
-  // This dependency is used by the application.
-  implementation name: "tiger"
-  implementation 'com.google.guava:guava:32.1.1-jre'
-  implementation 'com.squareup:javapoet:1.7.0'
-  implementation 'com.google.code.findbugs:jsr305:3.0.1'
-  implementation 'com.google.dagger:dagger:2.6'
-  implementation 'com.sun.phobos:freemarker:2.3.9'
-  implementation 'com.google.auto.service:auto-service:1.0-rc2'
-  implementation 'com.google.code.gson:gson:2.7'
-
-  annotationProcessor name: "tiger"
-  annotationProcessor 'com.google.guava:guava:19.0'
-  annotationProcessor 'com.squareup:javapoet:1.7.0'
-  annotationProcessor 'com.google.code.findbugs:jsr305:3.0.1'
-  annotationProcessor 'com.google.dagger:dagger:2.6'
-  annotationProcessor 'com.sun.phobos:freemarker:2.3.9'
-  annotationProcessor 'com.google.auto.service:auto-service:1.0-rc2'
-  annotationProcessor 'com.google.code.gson:gson:2.7'
-
+  implementation name: "tiger-full"
+  annotationProcessor name: "tiger-full"
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
