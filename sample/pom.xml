@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.freemanliu</groupId>
-  <artifactId>tiger</artifactId>
+  <artifactId>tiger-sample</artifactId>
   <version>1.0-SNAPSHOT</version>
 
-  <name>tiger</name>
+  <name>tiger-sample</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,41 +18,13 @@
 
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
+      <groupId>com.freemanliu</groupId>
+      <artifactId>tiger</artifactId>
+      <version>0.0.1</version>
+      <scope>system</scope>
+      <systemPath>${basedir}/libs/tiger-full.jar</systemPath>
     </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>19.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.squareup</groupId>
-      <artifactId>javapoet</artifactId>
-      <version>1.7.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.findbugs</groupId>
-      <artifactId>jsr305</artifactId>
-      <version>3.0.1</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.dagger</groupId>
-      <artifactId>dagger</artifactId>
-      <version>2.6</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.auto.service</groupId>
-      <artifactId>auto-service</artifactId>
-      <version>1.0-rc2</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>2.7</version>
-    </dependency>
+
   </dependencies>
 
   <build>
@@ -102,6 +74,7 @@
       </plugins>
     </pluginManagement>
     <plugins>
+      <!-- shade-plugin does not catch system dep, which kind of makes sense. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -112,16 +85,6 @@
             <goals>
               <goal>shade</goal>
             </goals>
-            <configuration>
-              <filters>
-                <filter>
-                  <artifact>com.google.auto.service:auto-service</artifact>
-                  <excludes>
-                    <exclude>META-INF/services/*</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-            </configuration>
           </execution>
         </executions>
       </plugin>
