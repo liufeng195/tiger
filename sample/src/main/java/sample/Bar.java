@@ -16,6 +16,7 @@
 package sample;
 
 import javax.inject.Provider;
+import dagger.Lazy;
 
 public class Bar {
   private final Foo foo;
