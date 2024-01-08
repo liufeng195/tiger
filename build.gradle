@@ -29,6 +29,7 @@ dependencies {
   implementation 'com.google.dagger:dagger:2.6'
   implementation 'com.sun.phobos:freemarker:2.3.9'
   implementation 'com.google.auto.service:auto-service:1.0-rc2'
+  annotationProcessor 'com.google.auto.service:auto-service:1.0-rc2'
   implementation 'com.google.code.gson:gson:2.7'
 
   implementation 'org.jetbrains:annotations:15.0'
