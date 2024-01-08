@@ -19,6 +19,7 @@ import dagger.Module;
 import dagger.Provides;
 
 import javax.inject.Provider;
+import dagger.Lazy;
 
 @Module
 public class ActivityModule {

@@ -10,3 +10,4 @@ sample/src/libs
 target
 sample/target
 dependency-reduced-pom.xml
+.mvn

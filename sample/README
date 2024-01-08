@@ -1,7 +1,13 @@
-3 steps needed to run the sample:
+With gradle, 3 steps needed to run the sample:
 Step 1: gradle build in the parent directory to generate tigar.jar
 Step 2: in sample dir, link -s ../build/libs/tiger.jar libs/tiger.jar Copying also works but you need to copy every time when tigar.jar is changed. On windows, you need to do the similar operation.
 Step 3: in sample dir, gradle run, or run mvn package and in windows, the gitbash does not handle -cp. You have to run
 in in cmd. And the command is "java -cp libs\tiger-full.jar;target\tiger-sample-1.0-SNAPSHOT.jar sample.Main". Pay
 attention that the separator is ";" on windows but ":" on linux. Neither works on gitbash!
 
+With maven, similar as above:
+Step 1: build and install tiger to local repo with *right* version.
+ mvn install:install-file -Dfile=target/tiger-1.0-SNAPSHOT.jar  -DpomFile=pom.xml  -Dversion=0.0.1
+Step 2: in sample run:
+ maven clean package
+Step 3: run with the same way above.

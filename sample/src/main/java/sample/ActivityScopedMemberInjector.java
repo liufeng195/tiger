@@ -18,17 +18,9 @@ package sample;
 import tiger.MembersInjector;
 import dagger.Component;
 
-import java.util.Set;
-
-import javax.inject.Singleton;
-
-@Singleton
-//@Component(modules = ApplicationModule.class)
-@MembersInjector(scope = Singleton.class)
-public interface ApplicationComponent {
-  void injectPseudoApplication(PseudoApplication application);
-
-  Foo provideFoo();
-  
-  Set<Kablam> provideKabalmSet();
+@ActivityScoped
+//@Component(dependencies = ApplicationComponent.class, modules = ActivityModule.class)
+@MembersInjector(scope = sample.ActivityScoped.class)
+public interface ActivityScopedMemberInjector {
+  void injectPseudoActivity(PseudoActivity activity);
 }
