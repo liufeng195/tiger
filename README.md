@@ -17,7 +17,8 @@ If you are here, you must already be familiar with DI(Dependency Injection) and 
 DI has been evolving for long time in the different form. But the concept is not really changed much. This document will not repeat these concepts. If you find some concept not explained, google it. Also Guice probably has explained those concept very well.
 
 ## Integration
-Tiger is an annotation process. Therefore just build the jar and use it the way that annotation processors are supposed to be used. All environment should work. The sample uses gradle.
+Tiger is an annotation processor. Therefore, just build the jar and use it the way that annotation processors are 
+supposed to be used. All environment should work. The sample is ready to be built by both gradle and maven.
 
 ## How?
 Before diving into details, it will be helpful, very helpful, to understand the intended usage of tiger. Tiger is designed to let the machine do as much as possible and let human do as little as possible. It requires minimal information from the developer. From these information, scoped injectors are generated. Application can instances these injectors and use them to inject classes. To achieve this, tiger has distilled the information needed to generate injectors. Here are they, with related annotation.
@@ -29,7 +30,9 @@ Usually application has at least one scope, singleton. Even if there is no scope
 It specifies the dependencies between scopes. All the dependency information form a scope tree.
 
 ### `@dagger.Module`
-It provides binding information through @Provides annotated methods with optional scope. Now(2016/08/10)  we just reuse dagger.Module. In future, dagger.Module will be copied into tiger.Module so that tiger does not need to depend on dagger.
+It provides binding information through @Provides annotated methods with optional scope. Now(2016/08/10)  we just 
+reuse dagger.Module. In the future, dagger.Module will be changed into tiger.Module so that tiger does not need to 
+depend on dagger.
 
 ### `@javax.inject.Inject` on ctor
 It provides binding information with optional scope.
@@ -44,7 +47,7 @@ It specifies the injection points from which injector fans out when injecting an
 The package for the generated injectors.
 
 ### `@tiger.ScopedComponentNames`
-It specify the names of the injectors.
+It specifies the names of the injectors.
 
 ### `@tiger.GenerationTriggerAnnotation`
 This the annotation that triggers the generation processor.
