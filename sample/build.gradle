@@ -21,7 +21,10 @@ apply plugin: "java"
 apply plugin: "application"
 
 repositories {
-  jcenter()
+//  mavenCentral()
+  maven {
+    url 'https://cmc.centralrepo.rnd.huawei.com/maven/'
+  }
 }
 
 repositories {
