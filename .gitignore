@@ -1,10 +1,11 @@
 *iml
 .idea
-
 .gradle
-/build/
+build
 gradle-app.setting
 !gradle-wrapper.jar
 .gradletasknamecache
 local.properties
 sample/src/libs
+target
+sample/target
